@@ -1,6 +1,15 @@
 Dspec 
 =====
 DSpec is a way to write specification on data.
+Specifications look like these
+
+```yaml
+- assert NullPercentageFor `o_city` < 10
+- assert NullPercentageFor `o_state` < 10
+- assert CountRows == 6448
+- assert CountColumns == 6
+- assert CountUnique `o_city` < 8000
+```
 
 Usage
 -----

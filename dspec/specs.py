@@ -1,7 +1,8 @@
 import yaml
 from tabulate import tabulate
 from .dataset import PandasDataSet
-
+import inspect
+import pandas as pd
 
 class DataSpec(object):
     def test(self, dataset):
@@ -20,6 +21,17 @@ class MetricConstantSpec(DataSpec):
     def test(self, dataset):
         # print(self.op, self.metric.get(dataset),", ", self.value)
         return self.op.test(self.metric.get(dataset),  float(self.value)) 
+class UnarySpec(DataSpec):
+    def __init__(self, metric):
+        self.metric = metric
+        
+
+    def __str__(self):
+        return "assert %s" % (str(self.metric))
+
+    def test(self, dataset):
+        # print(self.op, self.metric.get(dataset),", ", self.value)
+        return self.metric.get(dataset)
 class Registry(object):
     def __init__(self):
         self.operators = {}
@@ -38,8 +50,8 @@ class Registry(object):
         return self.metrics[metric](*args)
 registry = Registry()
 class Specification(object):
-    def __init__(self, ds):
-        self.ds = ds
+    def __init__(self):
+        
         self.specs = []
     
     def loadSuite(self, file_name):
@@ -58,18 +70,26 @@ class Specification(object):
             self.specs.append(MetricConstantSpec(registry.createMetric(metric, args), registry.createOp(op), value))
         return self
             
-    @classmethod
-    def pandas(cls, df):
-        return Specification(PandasDataSet(df))
-
-    def expect(self, metric, op, value):
+    def expect(self, metric, op=None, value = None):
         if self.specs is None:
             self.specs = []
-        self.specs.append(MetricConstantSpec(metric, op, value))
+        if op is None:
+            self.specs.append(UnarySpec(metric() if inspect.isclass(metric) else metric))   
+            return self 
+        self.specs.append(MetricConstantSpec(metric() if inspect.isclass(metric) else metric , op() if inspect.isclass(op) else op, value))
         return self
 
-    def run(self):
-        return SpecRun(self.ds.expect(*self.specs))
+    def run(self, df):
+        if isinstance(df, pd.DataFrame):
+            ds = PandasDataSet(df)
+        return SpecRun(ds.expect(*self.specs))
+    def test(self, df):
+        if isinstance(df, pd.DataFrame):
+            ds = PandasDataSet(df)
+        failing = SpecRun(ds.expect(*self.specs)).get_failing()
+        if len(failing) > 0:
+            raise Exception("Failing Specs %s" % failing)
+        return failing
 
     def serialize(self, **kwargs):
         rules = [str(spec) for spec in self.specs]
@@ -85,8 +105,10 @@ class Specification(object):
 class SpecRun(object):
     def __init__(self, results):
         self.results = results
-
-    def pretty_print(self):
+    def get_failing(self):
+        return [k for k, v in self.results.items() if not v]
+            
+    def print(self):
         header = "Spec Run results"
         print(header+"\n"+"="*len(header)+"\n")
         print(tabulate([[k, str(v)]

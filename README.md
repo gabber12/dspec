@@ -15,6 +15,8 @@ Specifications look like these
 Usage
 -----
 
+#### Create Specifications
+
 Create specifications by code
 ```python
 specs = Specification() \
@@ -36,6 +38,8 @@ specs = Specification() \
 
 ```
 
+#### Run Specifications
+
 Test Specifications on pandas dataframe
 ```python
 
@@ -51,4 +55,19 @@ or print results
 results = specs.run(df)
 results.print()
     
+```
+```sh
+Spec Run results
+================
+
+Rule                                  Result
+------------------------------------  --------
+assert NullPercentage `o_city` < 10   True
+assert NullPercentage `o_state` < 10  True
+assert CountRows == 6448              True
+assert CountColumns == 6              True
+assert Cardinality `o_city` > 8000    False
+assert IsUnique `o_city`              False
+assert IsComplete `o_state`           True
+assert IsComplete `o_city`            False
 ```
